@@ -1,5 +1,6 @@
 # blockchain-banking-
 See the project structure below
+
 banking-blockchain/
 ├── cmd/
 │   └── main.go
