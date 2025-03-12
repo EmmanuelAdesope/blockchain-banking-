@@ -1,0 +1,68 @@
+package blockchain
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// TransactionType represents the type of banking transaction
+type TransactionType string
+
+const (
+	TransferTx TransactionType = "TRANSFER"
+	DepositTx  TransactionType = "DEPOSIT"
+)
+
+// TransactionStatus represents the status of a transaction
+type TransactionStatus string
+
+const (
+	PendingStatus   TransactionStatus = "PENDING"
+	CompletedStatus TransactionStatus = "COMPLETED"
+	FailedStatus    TransactionStatus = "FAILED"
+)
+
+// Transaction represents a financial transaction in the blockchain
+type Transaction struct {
+	FromAccount     string           `json:"from_account"`
+	ToAccount       string           `json:"to_account"`
+	Amount          float64          `json:"amount"`
+	Timestamp       time.Time        `json:"timestamp"`
+	TransactionID   string           `json:"transaction_id"`
+	Signature       string           `json:"signature"`
+	TransactionType TransactionType  `json:"transaction_type"`
+	Status          TransactionStatus `json:"status"`
+}
+
+// NewTransaction creates a new transaction
+func NewTransaction(fromAccount, toAccount string, amount float64, txType TransactionType) *Transaction {
+	return &Transaction{
+		FromAccount:     fromAccount,
+		ToAccount:       toAccount,
+		Amount:          amount,
+		Timestamp:       time.Now(),
+		TransactionID:   uuid.New().String(),
+		TransactionType: txType,
+		Status:          PendingStatus,
+	}
+}
+
+// Sign adds a signature to the transaction
+func (t *Transaction) Sign(signature string) {
+	t.Signature = signature
+}
+
+// Validate checks if the transaction is valid
+func (t *Transaction) Validate() error {
+	if t.Amount <= 0 {
+		return ErrInvalidAmount
+	}
+	if t.TransactionType == TransferTx && t.FromAccount == "" {
+		return ErrInvalidSender
+	}
+	if t.ToAccount == "" {
+		return ErrInvalidReceiver
+	}
+	return nil
+}
