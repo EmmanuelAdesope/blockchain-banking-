@@ -1,0 +1,29 @@
+package main
+
+
+func main() {
+	// Create a new node
+	node := network.NewNode("node1", 4)
+
+	// Create a test transaction
+	tx := blockchain.NewTransaction(
+		"account1",
+		"account2",
+		100.0,
+		blockchain.TransferTx,
+	)
+
+	// Add transaction to blockchain
+	if err := node.Blockchain.AddTransaction(tx); err != nil {
+		log.Fatalf("Failed to add transaction: %v", err)
+	}
+
+	// Mine pending transactions
+	block, err := node.Blockchain.MinePendingTransactions()
+	if err != nil {
+		log.Fatalf("Failed to mine transactions: %v", err)
+	}
+
+	log.Printf("New block mined: %v", block.Hash)
+	log.Printf("Account2 balance: %f", node.Blockchain.GetBalance("account2"))
+}
