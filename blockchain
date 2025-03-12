@@ -1,0 +1,104 @@
+package blockchain
+
+import (
+	"errors"
+	"sync"
+)
+
+var (
+	ErrInvalidAmount   = errors.New("invalid transaction amount")
+	ErrInvalidSender   = errors.New("invalid sender account")
+	ErrInvalidReceiver = errors.New("invalid receiver account")
+	ErrInsufficientBalance = errors.New("insufficient balance")
+)
+
+// Blockchain represents the entire blockchain
+type Blockchain struct {
+	Chain              []*Block
+	PendingTransactions []*Transaction
+	Difficulty         int
+	Accounts           map[string]float64
+	mu                sync.RWMutex
+}
+
+// NewBlockchain creates a new blockchain instance
+func NewBlockchain(difficulty int) *Blockchain {
+	bc := &Blockchain{
+		Difficulty: difficulty,
+		Accounts:   make(map[string]float64),
+	}
+	bc.createGenesisBlock()
+	return bc
+}
+
+// createGenesisBlock creates the first block in the chain
+func (bc *Blockchain) createGenesisBlock() {
+	genesisBlock := NewBlock(0, []*Transaction{}, "0")
+	bc.Chain = append(bc.Chain, genesisBlock)
+}
+
+// AddTransaction adds a new transaction to pending transactions
+func (bc *Blockchain) AddTransaction(tx *Transaction) error {
+	if err := tx.Validate(); err != nil {
+		return err
+	}
+
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	if err := bc.validateTransactionBalance(tx); err != nil {
+		return err
+	}
+
+	bc.PendingTransactions = append(bc.PendingTransactions, tx)
+	return nil
+}
+
+// validateTransactionBalance checks if the account has sufficient balance
+func (bc *Blockchain) validateTransactionBalance(tx *Transaction) error {
+	if tx.TransactionType == TransferTx {
+		balance, exists := bc.Accounts[tx.FromAccount]
+		if !exists {
+			return ErrInvalidSender
+		}
+		if balance < tx.Amount {
+			return ErrInsufficientBalance
+		}
+	}
+	return nil
+}
+
+// MinePendingTransactions creates a new block with pending transactions
+func (bc *Blockchain) MinePendingTransactions() (*Block, error) {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	if len(bc.PendingTransactions) == 0 {
+		return nil, errors.New("no pending transactions")
+	}
+
+	txsToMine := bc.PendingTransactions
+	if len(txsToMine) > 10 {
+		txsToMine = txsToMine[:10]
+	}
+
+	newBlock := NewBlock(
+		len(bc.Chain),
+		txsToMine,
+		bc.Chain[len(bc.Chain)-1].Hash,
+	)
+
+	newBlock.Mine(bc.Difficulty)
+	
+	// Process transactions
+	for _, tx := range txsToMine {
+		bc.processTransaction(tx)
+	}
+
+	bc.Chain = append(bc.Chain, newBlock)
+	bc.PendingTransactions = bc.PendingTransactions[len(txsToMine):]
+
+	return newBlock, nil
+}
+
+//
