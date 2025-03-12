@@ -1,0 +1,46 @@
+package network
+
+// Node represents a node in the blockchain network
+type Node struct {
+	ID         string
+	Blockchain *blockchain.Blockchain
+	Peers      map[string]*Peer
+	mu         sync.RWMutex
+}
+
+// NewNode creates a new blockchain node
+func NewNode(id string, difficulty int) *Node {
+	return &Node{
+		ID:         id,
+		Blockchain: blockchain.NewBlockchain(difficulty),
+		Peers:      make(map[string]*Peer),
+	}
+}
+
+// AddPeer adds a new peer to the node's network
+func (n *Node) AddPeer(peer *Peer) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.Peers[peer.ID] = peer
+}
+
+// BroadcastTransaction broadcasts a transaction to all peers
+func (n *Node) BroadcastTransaction(tx *blockchain.Transaction) {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	
+	for _, peer := range n.Peers {
+		go peer.SendTransaction(tx)
+	}
+}
+
+// SyncChain synchronizes the blockchain with peers
+func (n *Node) SyncChain() error {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+
+	for _, peer := range n.Peers {
+		go peer.RequestChainSync()
+	}
+	return nil
+}
